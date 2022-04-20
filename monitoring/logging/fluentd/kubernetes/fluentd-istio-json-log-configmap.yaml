@@ -10,7 +10,7 @@ data:
     ################################################################
     # This source gets all logs from local docker host
     @include pods-kind-fluent.conf
-    #@include pods-fluent.conf
+    @include pods-fluent.conf
     #@include file-fluent.conf
     @include elastic-fluent.conf
   pods-kind-fluent.conf: |-
@@ -25,7 +25,7 @@ data:
       </parse>
     </source>
 
-    <filter envoy.access>
+    <filter envoy.*.access>
       @type parser
       key_name log
       <parse>
@@ -33,6 +33,17 @@ data:
         @type json
       </parse>
     </filter>
+
+    <source>
+      @type tail
+      read_from_head true
+      tag envoy.productpage.access
+      path /var/log/containers/*productpage*istio-proxy*.log
+      pos_file /var/log/productpage.log.pos
+      <parse>
+        @type json
+      </parse>
+    </source>
   pods-fluent.conf: |-
     <source>
       @type tail
@@ -65,10 +76,26 @@ data:
       path /tmp/file-test.log
     </match>
   elastic-fluent.conf: |-
-    <match **>
+    <match kubernetes.**>
       @type elasticsearch
       host "#{ENV['FLUENT_ELASTICSEARCH_HOST'] || 'elasticsearch.elastic-kibana'}"
       port "#{ENV['FLUENT_ELASTICSEARCH_PORT'] || '9200'}"
-      index_name fluentd-k8s
+      index_name k8s
+      type_name fluentd
+    </match>
+
+    <match envoy.access>
+      @type elasticsearch
+      host "#{ENV['FLUENT_ELASTICSEARCH_HOST'] || 'elasticsearch.elastic-kibana'}"
+      port "#{ENV['FLUENT_ELASTICSEARCH_PORT'] || '9200'}"
+      index_name all-envoy
+      type_name fluentd
+    </match>
+
+    <match envoy.productpage.access>
+      @type elasticsearch
+      host "#{ENV['FLUENT_ELASTICSEARCH_HOST'] || 'elasticsearch.elastic-kibana'}"
+      port "#{ENV['FLUENT_ELASTICSEARCH_PORT'] || '9200'}"
+      index_name productpage-envoy
       type_name fluentd
     </match>
