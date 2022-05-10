@@ -12,7 +12,17 @@ data:
     @include pods-kind-fluent.conf
     #@include pods-fluent.conf
     #@include file-fluent.conf
+    @include envoy-kind-fluent.conf
     @include elastic-fluent.conf
+  envoy-kind-fluent.conf: |-
+    <source>
+      type tail
+      path /var/log/containers/*istio-proxy*.log
+      pos_file /var/log/istio-proxy.log.pos
+      tag envoy.access
+      format /^[^\]]* \[(?<start_time>[^\]]*)\] "(?<method>\S+)(?: +(?<x_envoy_original_path>(?:[^\"]|\\.)*?)(?: +\S*)?) (?<protocol>\S+)?" (?<response_code>\S+) (?<response_flags>\S+) (?<response_code_details>\S+) (?<connection_termination_details>\S+) "(?<upstream_failure_reason>[^"]+)" (?<bytes_received>\S+) (?<bytes_sent>\S+) (?<duration>\S+) (?<x_envoy_upstream_service_time>\S+) "(?<x_forwarded_for>[^\"]*)" "(?<user_agent>[^\"]*)" "(?<x_request_id>[^\"]*)" "(?<authority>[^\"]*)" "(?<upstream_host>[^\"]*)"? (?<upstream_cluster>\S+) (?<upstream_local_address>\S+) (?<downstream_local_address>\S+) (?<downstream_remote_address>\S+) (?<requested_server_name>\S+) (?<route_name>\S+)$/
+      time_format %Y-%m-%dT%H:%M:%S%Z
+    </source>
   pods-kind-fluent.conf: |-
     <source>
       @type tail
@@ -72,10 +82,17 @@ data:
       path /tmp/file-test.log
     </match>
   elastic-fluent.conf: |-
-    <match **>
+    <match kubernetes.**>
       @type elasticsearch
       host "#{ENV['FLUENT_ELASTICSEARCH_HOST'] || 'elasticsearch.elastic-kibana'}"
       port "#{ENV['FLUENT_ELASTICSEARCH_PORT'] || '9200'}"
-      index_name fluentd-k8s
+      index_name counter-k8s
+      type_name fluentd
+    </match>
+    <match envoy.access>
+      @type elasticsearch
+      host "#{ENV['FLUENT_ELASTICSEARCH_HOST'] || 'elasticsearch.elastic-kibana'}"
+      port "#{ENV['FLUENT_ELASTICSEARCH_PORT'] || '9200'}"
+      index_name envoy-k8s
       type_name fluentd
     </match>
